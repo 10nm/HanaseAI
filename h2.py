@@ -1,10 +1,10 @@
 import discord
-import openai
+from llama_cpp import Llama
 import os
 
-openai.api_key = "EMPTY"
-openai.base_url = "http://localhost:8000/v1/"
-model = "vicuna-7b-v1.5"
+llm = Llama(
+    model_path = "../models/gguf/calm2-7b-chat-q5km.gguf", n_gpu_layers=-1
+)
 
 class MyClient(discord.Client):
     async def on_ready(self):
@@ -27,22 +27,21 @@ class MyClient(discord.Client):
         if message.content == '!leave':
             await message.guild.voice_client.disconnect()
         
-        if ct.startswith('.') == True:
+        if ct.startswith('.') ==  True:
             prompt = (message.content)
             prompt = prompt.lstrip('.')
             completion = await nlp(prompt)
-            await message.channel.send(completion.choices[0].text)
+            await message.channel.send(completion)
 
 async def nlp(prompt):
-    response= openai.completions.create(
-        model=model, 
-        prompt=prompt, 
-        max_tokens=64,
-    )
-    return response
+    response= llm(f"""### ユーザー: {prompt} 
+### アシスタント:""",max_tokens=250, stop=["###","ユーザー","アシスタント"])
+    if response['choices'][0]['text'] == 0:
+        return "応答なし"
+    else:
+        return response['choices'][0]['text']
 
 token = os.environ.get("TOKEN")
-print(token)
 
 client = MyClient(intents=discord.Intents.all())
 client.run(str(token))
